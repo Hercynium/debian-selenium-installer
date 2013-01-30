@@ -19,7 +19,7 @@ if [[ $disto != *Debian* ]] ; then
 fi
 
 # Add keys and repositories if needed
-if grep -Fq "iceweasel-release" /etc/apt/sources.list ; then
+if ! grep -Fq "iceweasel-release" /etc/apt/sources.list ; then
     wget -q -O - http://mozilla.debian.net/archive.asc | apt-key add -
     echo -e "\n### Mozilla Repository\ndeb http://mozilla.debian.net/ squeeze-backports iceweasel-release" >> /etc/apt/sources.list
 fi
