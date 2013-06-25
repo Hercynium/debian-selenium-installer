@@ -1,36 +1,62 @@
 #!/bin/bash
 
-set -e
+# Check newest version of selenium on:
+# https://code.google.com/p/selenium/downloads/list
+SELENIUM2_VER="2.29.0"
 
-# if you change this, search and replace throgh this file as well.
-SELENIUM2_VER="2.0b3"
+# Check execution as root
+if [ "$(id -u)" != "0" ]; then
+   echo "This script must be run as root" 1>&2
+   exit 1
+fi
 
-# install dependencies (not including browser)
+# Check is Debian
+disto=$(lsb_release -d);
+
+if [[ $disto != *Debian* ]] ; then
+    echo "\nIt is not Debian Server\n"
+    exit 1
+fi
+
+# Add keys and repositories if needed
+if ! grep -Fq "iceweasel-release" /etc/apt/sources.list ; then
+    wget -q -O - http://mozilla.debian.net/archive.asc | apt-key add -
+    echo -e "\n### Mozilla Repository\ndeb http://mozilla.debian.net/ squeeze-backports iceweasel-release" >> /etc/apt/sources.list
+fi
+
+apt-get update
+
+# install dependencies (including browsers)
 apt-get install \
-  sun-java6-jre \
-  sun-java6-fonts \
-  sun-java6-javadb \
-  xvfb
+  openjdk-6-jre \
+  xvfb \
+  chromium-browser \
+  iceweasel
 
-# create selenium user acct.
-### TODO: fail if it exists, or delete & recreate
+# check selenium user account.
+id -u selenium2
+
+if [ $? == 0 ] ; then
+    echo -e "\n Selenium user is exists - please remove him and restart script"
+    exit
+fi
+
+# add selenium account
 adduser --quiet --system --disabled-login --group \
   --gecos="Selenium2 Server User Account" \
   --home="/var/lib/selenium2" selenium2
 mkdir -p /var/lib/selenium2
 chown -R selenium2:selenium2 /var/lib/selenium2
 
-
 # download, unpack & install under /opt
-if [ ! -d "/opt/selenium-server-$SELENIUM2_VER" ]; then
-    wget "http://selenium.googlecode.com/files/selenium-server-standalone-$SELENIUM2_VER.jar"
-    sudo mkdir -p "/opt/selenium-server-$SELENIUM2_VER"
-    sudo mv "selenium-server-standalone-$SELENIUM2_VER.jar" "/opt/selenium-server-$SELENIUM2_VER"
-    sudo chown -R root:root "/opt/selenium-server-$SELENIUM2_VER"
+if [ ! -d "/opt/selenium-server-$SELENIUM2_VER" ] ; then
+    mkdir -p "/opt/selenium-server-$SELENIUM2_VER"
+    wget -O /opt/selenium-server-$SELENIUM2_VER/selenium-server-standalone-$SELENIUM2_VER.jar \
+        https://selenium.googlecode.com/files/selenium-server-standalone-$SELENIUM2_VER.jar
+    chown -R root:root "/opt/selenium-server-$SELENIUM2_VER"
+
 else
-    echo
-    echo "Selenium2 seems to already be installed under /opt/selenium-server-$SELENIUM2_VER"
-    echo
+    echo -e "\nSelenium2 seems to already be installed under /opt/selenium-server-$SELENIUM2_VER\n"
 fi
 
 # create /etc/default/selenium2
